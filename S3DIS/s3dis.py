@@ -8,6 +8,7 @@ import sys
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 from utils.cutils import grid_subsampling, KDTree, grid_subsampling_test
 from config import processed_data_path
+from typing import List
 
 class S3DIS(Dataset):
     r"""
@@ -170,7 +171,7 @@ class S3DIS(Dataset):
 
         return
 
-def fix_indices(indices: list[torch.Tensor], cnt1: list, cnt2: list):
+def fix_indices(indices: List[torch.Tensor], cnt1: list, cnt2: list):
     """
     fix so ok for indexing as a whole
     """

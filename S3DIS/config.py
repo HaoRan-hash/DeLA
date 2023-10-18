@@ -5,9 +5,9 @@ from torch import nn
 import torch
 
 # S3DIS dataset path
-raw_data_path = Path("xxx/Stanford3dDataset_v1.2_Aligned_Version")
+raw_data_path = Path("/mnt/Disk16T/chenhr/threed_data/data/Stanford3dDataset_v1.2_Aligned_Version")
 
-processed_data_path = raw_data_path.parent / "s3dis"
+processed_data_path = raw_data_path.parent / "s3dis_dela"
 # if you want to set the processed dataset path, uncomment here
 #processed_data_path = Path("")
 
