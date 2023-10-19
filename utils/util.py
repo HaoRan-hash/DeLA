@@ -1,4 +1,5 @@
 import torch
+import logging
 
 def load_state(fn, **args):
     state = torch.load(fn)
@@ -72,9 +73,32 @@ class Metric():
         miou = iou.mean()
         self.miou = round(miou.item(), digits)
 
-    def print(self, str="", iou=True, digits=4):
+    def print(self, str="", iou=True, digits=4, logger=None):
         self.calc(digits)
-        if iou:
-            print(f"{str} acc: {self.acc} || macc: {self.macc} || miou: {self.miou} || iou: {self.iou}")
+        if logger:
+            if iou:
+                logger.info(f"{str} acc: {self.acc} || macc: {self.macc} || miou: {self.miou} || iou: {self.iou}")
+            else:
+                logger.info(f"{str} acc: {self.acc} || macc: {self.macc}")
         else:
-            print(f"{str} acc: {self.acc} || macc: {self.macc}")
+            if iou:
+                print(f"{str} acc: {self.acc} || macc: {self.macc} || miou: {self.miou} || iou: {self.iou}")
+            else:
+                print(f"{str} acc: {self.acc} || macc: {self.macc}")
+
+
+def create_logger(log_file=None, rank=0, log_level=logging.INFO):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(log_level if rank == 0 else 'ERROR')
+    formatter = logging.Formatter('%(asctime)s  %(levelname)5s  %(message)s')
+    console = logging.StreamHandler()
+    console.setLevel(log_level if rank == 0 else 'ERROR')
+    console.setFormatter(formatter)
+    logger.addHandler(console)
+    if log_file is not None:
+        file_handler = logging.FileHandler(filename=log_file)
+        file_handler.setLevel(log_level if rank == 0 else 'ERROR')
+        file_handler.setFormatter(formatter)
+        logger.addHandler(file_handler)
+    logger.propagate = False
+    return logger

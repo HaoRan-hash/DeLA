@@ -12,10 +12,12 @@ from utils.timm.scheduler.cosine_lr import CosineLRScheduler
 from utils.timm.optim import create_optimizer_v2
 import utils.util as util
 from delasemseg import DelaSemSeg
-from time import time, sleep
+from time import time
 from config import s3dis_args, s3dis_warmup_args, dela_args, batch_size, learning_rate as lr, epoch, warmup, label_smoothing as ls
+from tqdm import tqdm
 
-torch.set_float32_matmul_precision("high")
+
+# torch.set_float32_matmul_precision("high")
 
 def warmup_fn(model, dataset):
     model.train()
@@ -35,20 +37,16 @@ cur_id = "01"
 os.makedirs(f"output/log/{cur_id}", exist_ok=True)
 os.makedirs(f"output/model/{cur_id}", exist_ok=True)
 logfile = f"output/log/{cur_id}/out.log"
-errfile = f"output/log/{cur_id}/err.log"
-logfile = open(logfile, "a", 1)
-errfile = open(errfile, "a", 1)
-sys.stdout = logfile
-sys.stderr = errfile
-# 
-print(r"base ")
+logger = util.create_logger(logfile)
+
+logger.info(r"base ")
 
 traindlr = DataLoader(S3DIS(s3dis_args, partition="!5", loop=30), batch_size=batch_size, 
                       collate_fn=s3dis_collate_fn, shuffle=True, pin_memory=True, 
-                      persistent_workers=True, drop_last=True, num_workers=16)
+                      persistent_workers=True, drop_last=True, num_workers=8)
 testdlr = DataLoader(S3DIS(s3dis_args, partition="5", loop=1, train=False), batch_size=1,
                       collate_fn=s3dis_collate_fn, pin_memory=True, 
-                      persistent_workers=True, num_workers=16)
+                      persistent_workers=True, num_workers=8)
 
 step_per_epoch = len(traindlr)
 
@@ -78,7 +76,7 @@ for i in range(start_epoch, epoch):
     corls.reset()
     metric.reset()
     now = time()
-    for xyz, feature, indices, pts, y in traindlr:
+    for xyz, feature, indices, pts, y in tqdm(traindlr, desc=f'Epoch {i}/{epoch}'):
         lam = scheduler_step/(epoch*step_per_epoch)
         lam = 3e-3 ** lam * .25
         scheduler.step(scheduler_step)
@@ -99,9 +97,9 @@ for i in range(start_epoch, epoch):
         scaler.step(optimizer)
         scaler.update()
         
-    print(f"epoch {i}:")
-    print(f"loss: {round(ttls.avg, 4)} || cls: {round(corls.avg, 4)}")
-    metric.print("train:")
+    logger.info(f"epoch {i}:")
+    logger.info(f"loss: {round(ttls.avg, 4)} || cls: {round(corls.avg, 4)}")
+    metric.print("train:", logger=logger)
 
     model.eval()
     metric.reset()
@@ -115,12 +113,12 @@ for i in range(start_epoch, epoch):
                 p = model(xyz, feature, indices)
             metric.update(p, y)
     
-    metric.print("val:  ")
-    print(f"duration: {time() - now}")
+    metric.print("val:  ", logger=logger)
+    logger.info(f"duration: {time() - now}")
     cur = metric.miou
     if best < cur:
         best = cur
-        print("new best!")
+        logger.info("new best!")
         util.save_state(f"output/model/{cur_id}/best.pt", model=model)
     
     util.save_state(f"output/model/{cur_id}/last.pt", model=model, optimizer=optimizer, scaler=scaler, start_epoch=i+1)

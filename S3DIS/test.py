@@ -10,8 +10,9 @@ import utils.util as util
 from delasemseg import DelaSemSeg
 from config import s3dis_args, dela_args
 from torch.cuda.amp import autocast
+from tqdm import tqdm
 
-torch.set_float32_matmul_precision("high")
+# torch.set_float32_matmul_precision("high")
 
 loop = 12
 
@@ -20,7 +21,7 @@ testdlr = DataLoader(S3DIS(s3dis_args, partition="5", loop=loop, train=False, te
 
 model = DelaSemSeg(dela_args).cuda()
 
-util.load_state("pretrained/best.pt", model=model)
+util.load_state("output/model/01/best.pt", model=model)
 
 model.eval()
 
@@ -29,7 +30,7 @@ cum = 0
 cnt = 0
 
 with torch.no_grad():
-    for xyz, feature, indices, nn, y in testdlr:
+    for xyz, feature, indices, nn, y in tqdm(testdlr):
             xyz = xyz.cuda(non_blocking=True)
             feature = feature.cuda(non_blocking=True)
             indices = [ii.cuda(non_blocking=True).long() for ii in indices[::-1]]
