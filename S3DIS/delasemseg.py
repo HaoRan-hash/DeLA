@@ -90,6 +90,7 @@ class Stage(nn.Module):
         super().__init__()
 
         self.depth = depth
+        print(self.depth)
         self.up_depth = len(args.depths) - 1
 
         self.first = first = depth == 0
@@ -165,7 +166,7 @@ class Stage(nn.Module):
         
         # spatial encoding
         N, k = knn.shape
-        nbr = xyz[knn] - xyz.unsqueeze(1)
+        nbr = xyz[knn] - xyz.unsqueeze(1)   # 算出相对坐标
         nbr = torch.cat([nbr, x[knn]], dim=-1).view(-1, 7) if self.first else nbr.view(-1, 3)
         if self.training and self.cp:
             nbr.requires_grad_()
