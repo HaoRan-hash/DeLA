@@ -44,3 +44,5 @@ dela_args.mlp_ratio = 2
 dela_args.use_cp = False
 
 dela_args.cor_std = [1.6, 3.2, 6.4, 12.8]
+dela_args.memory_depth = [2, 3]
+dela_args.memory_length = 128
