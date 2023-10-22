@@ -2,3 +2,4 @@ utils/*
 **/*.pyc
 .vscode/*
 output/*
+S3DIS/output/*
