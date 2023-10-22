@@ -16,7 +16,7 @@ cutils = load("cutils_", sources=sources, extra_cflags=["-O3", "-mavx2", "-funro
 
 def next_prime(x) -> int:
     r"""
-    Finds the next prime, x included.           
+    Finds the next prime, x included. (找下一个素数, 包含x)
     x should be >= 3 for a correct result.
     """
     x = int(x) | 1
@@ -43,7 +43,7 @@ def grid_subsampling(xyz: torch.Tensor, grid_size: float, hash_size: float=1.) -
     if xyz.stride(0) != 3:
         xyz = xyz.contiguous()
     size = xyz.shape[0] * hash_size
-    size = next_prime(size)
+    size = next_prime(size)   # 为什么要用素数
     table = torch.zeros((size,), dtype=torch.int64)
     storage = torch.empty((size * 3,), dtype=torch.int64)
     indices = cutils.grid_subsampling(xyz, grid_size, table, storage)
@@ -78,7 +78,7 @@ class KDTree():
     dists: float
 
     Setting ordered = False (default) can be 1.1-1.2x faster. 
-    If there are not enough neighbors, the nearest point is used for padding. 
+    If there are not enough neighbors, the nearest point is used for padding. (最常见的策略, 最近的点做padding)
     Resources (reference to xyz, built tree) are freed when kdt goes out of life scope.
     """
     def __init__(self, xyz: torch.Tensor, max_leaf_size=20):
