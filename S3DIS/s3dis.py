@@ -61,6 +61,7 @@ class S3DIS(Dataset):
         idx //= self.loop
         xyz, col, lbl = self.datas[idx]
 
+        # 数据增强 (rotation, scale, jittor)
         if self.train:
             angle = random.random() * 2 * math.pi
             cos, sin = math.cos(angle), math.sin(angle)
@@ -81,6 +82,7 @@ class S3DIS(Dataset):
         if not self.train:
             xyz -= xyz.min(dim=0)[0]
 
+        # 若超过3w个点，选择其中的3w个
         if xyz.shape[0] > self.max_pts and self.train:
             pt = random.choice(xyz)
             condition = (xyz - pt).square().sum(dim=1).argsort()[:self.max_pts].sort()[0]  # sort to preserve locality
