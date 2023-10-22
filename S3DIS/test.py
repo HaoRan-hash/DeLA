@@ -8,11 +8,24 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 import utils.util as util
 from delasemseg import DelaSemSeg
+from delasemseg_mem import DelaSemSeg_Mem
+from delasemseg_mem_2 import DelaSemSeg_Mem_2
 from config import s3dis_args, dela_args
 from torch.cuda.amp import autocast
 from tqdm import tqdm
+from argparse import ArgumentParser
 
 # torch.set_float32_matmul_precision("high")
+
+parser = ArgumentParser()
+parser.add_argument('--cur_id', required=True)
+parser.add_argument('--multi_scale', action='store_true', default=False)
+args = parser.parse_args()
+
+cur_id = args.cur_id
+# logfile = f"output/log/{cur_id}/out.log"
+logfile = "pretrained/out.log"
+logger = util.create_logger(logfile)
 
 loop = 12
 
@@ -20,8 +33,11 @@ testdlr = DataLoader(S3DIS(s3dis_args, partition="5", loop=loop, train=False, te
                       collate_fn=s3dis_test_collate_fn, pin_memory=True, num_workers=8)
 
 model = DelaSemSeg(dela_args).cuda()
+# memory版
+# model = DelaSemSeg_Mem_2(dela_args).cuda()
 
-util.load_state("output/model/01/best.pt", model=model)
+# util.load_state(f"output/model/{cur_id}/best.pt", model=model)
+util.load_state(f"pretrained/best.pt", model=model)
 
 model.eval()
 
@@ -36,7 +52,18 @@ with torch.no_grad():
             indices = [ii.cuda(non_blocking=True).long() for ii in indices[::-1]]
             nn = nn.cuda(non_blocking=True).long()
             with autocast():
-                p = model(xyz, feature, indices)
+                if args.multi_scale:
+                    # voting预测 （做数据增强）
+                    multi_scales = [0.9, 1.0, 1.1]
+                    for i in range(len(multi_scales)):
+                        if i == 0:
+                            p = model(xyz * multi_scales[i], feature, indices)
+                        else:
+                            p += model(xyz * multi_scales[i], feature, indices)
+                    p = p / len(multi_scales)
+                else:
+                    p = model(xyz, feature, indices)
+                
             cum = cum + p[nn]
             cnt += 1
             if cnt % loop == 0:
@@ -44,4 +71,4 @@ with torch.no_grad():
                 metric.update(cum, y)
                 cnt = cum = 0
 
-metric.print("test: ")
+metric.print("test: ", logger=logger)
