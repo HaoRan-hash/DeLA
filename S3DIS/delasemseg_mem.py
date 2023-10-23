@@ -200,6 +200,7 @@ class Stage(nn.Module):
             x.shape = (n, c)
             y.shape = (n, )
             """
+            x = x + nbr
             coarse_pred = self.coarse_mlp(x)
             coarse_seg_loss = 0
             if self.training:
