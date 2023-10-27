@@ -6,9 +6,9 @@ import torch
 
 # ScanNetV2 dataset path
 # should contain scans/
-raw_data_path = Path("/xxx/")
+raw_data_path = Path("/mnt/Disk16T/chenhr/threed_data/data/scannet_origin")
 
-processed_data_path = raw_data_path.parent / "scannetv2"
+processed_data_path = raw_data_path.parent / "scannetv2_norm"
 # if you want to set the processed dataset path, uncomment here
 #processed_data_path = Path("")
 
@@ -52,3 +52,5 @@ dela_args.mlp_ratio = 2
 dela_args.use_cp = False
 
 dela_args.cor_std = [1.6, 2.5, 5, 10, 20]
+dela_args.memory_depth = [2, 3, 4]
+dela_args.memory_length = 128
