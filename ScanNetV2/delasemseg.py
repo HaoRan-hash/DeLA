@@ -90,6 +90,7 @@ class Stage(nn.Module):
         super().__init__()
 
         self.depth = depth
+        print(self.depth)
         self.up_depth = len(args.depths) - 1
 
         self.first = first = depth == 0
