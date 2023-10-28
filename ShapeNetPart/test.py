@@ -2,24 +2,28 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.cuda.amp import autocast
-from shapenetpart import PartTest
+from shapenetpart import PartTest, PartNormalDataset
 from torch.utils.data import DataLoader
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent.parent))
 import utils.util as util
 from delapartseg import DelaPartSeg
+from delapartseg_mem import DelaPartSeg_Mem
 from config import dela_args, batch_size
 import numpy as np
 from putil import cls2parts, part_seg_refinement, get_ins_mious
 
-torch.set_float32_matmul_precision("high")
+# torch.set_float32_matmul_precision("high")
 
+train_dataset = PartNormalDataset()
 testdlr = DataLoader(PartTest(), batch_size=batch_size,
                       pin_memory=True, num_workers=6)
 
-model = DelaPartSeg(dela_args).cuda()
-util.load_state("pretrained/best.pt", model=model)
+# model = DelaPartSeg(dela_args).cuda()
+# memory版
+model = DelaPartSeg_Mem(dela_args).cuda()
+util.load_state("/mnt/Disk16T/chenhr/DeLA/ShapeNetPart/output/model/memory_finetune_03/best.pt", model=model)
 model.eval()
 
 cls_mious = torch.zeros(16, dtype=torch.float32).cuda(non_blocking=True)
@@ -33,6 +37,7 @@ with torch.no_grad():
         shape = shape.cuda(non_blocking=True)
         norm = norm.cuda(non_blocking=True)
         y = y.cuda(non_blocking=True)
+        mask = train_dataset.object_to_part_onehot[shape]   # for memory
         logits = 0
         for i in range(10):
             ixyz = xyz
@@ -42,7 +47,9 @@ with torch.no_grad():
             inorm = inorm * (scale[[1, 2, 0]] * scale[[2, 0, 1]])
             inorm = F.normalize(inorm, p=2, dim=-1, eps=1e-8)
             with autocast():
-                logits  = logits + model(ixyz, inorm, shape)
+                # logits  = logits + model(ixyz, inorm, shape)
+                # memory版
+                logits = logits + model(ixyz, inorm, shape, mask)
         
         p = logits.max(dim=1)[1].view(B, N)
         part_seg_refinement(p, xyz, shape, cls2parts, 10)
