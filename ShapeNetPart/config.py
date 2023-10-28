@@ -4,7 +4,7 @@ from torch import nn
 import torch
 
 # ShapeNetPart dataset path
-data_path = Path("xxx/shapenetcore_partanno_segmentation_benchmark_v0_normal")
+data_path = Path("/mnt/Disk16T/chenhr/threed_data/data/shapenetcore_partanno_segmentation_benchmark_v0_normal")
 
 presample_path = data_path.parent / "shapenet_part_presample.pt"
 
@@ -31,3 +31,6 @@ dela_args.bn_momentum = 0.1
 dela_args.act = nn.GELU
 dela_args.mlp_ratio = 2
 dela_args.cor_std = [0.75, 1.5, 2.5, 4.7]
+
+dela_args.memory_depth = [3]
+dela_args.memory_length = 32
