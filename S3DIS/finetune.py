@@ -17,6 +17,7 @@ from time import time
 from config import s3dis_args, s3dis_warmup_args, dela_args, batch_size, learning_rate as lr, epoch, warmup, label_smoothing as ls
 from tqdm import tqdm
 from argparse import ArgumentParser
+from utils.lovasz_loss import lovasz_softmax
 
 
 # torch.set_float32_matmul_precision("high")
@@ -34,7 +35,8 @@ def warmup_fn(model, dataset):
             # p, closs = model(xyz, feature, indices, pts)
             # memory版
             p, closs, coarse_seg_loss = model(xyz, feature, indices, pts, y, 0)
-            loss = F.cross_entropy(p, y) + closs + coarse_seg_loss * 0.2
+            lovasz_loss = lovasz_softmax(p.softmax(dim=-1), y)
+            loss = F.cross_entropy(p, y) + closs + coarse_seg_loss * 0.1 + lovasz_loss * 3
         loss.backward()
 
 parser = ArgumentParser()
@@ -69,10 +71,10 @@ model = DelaSemSeg_Mem(dela_args).cuda()
 ckpt = torch.load('/mnt/Disk16T/chenhr/DeLA/S3DIS/pretrained/best.pt')
 model.load_state_dict(ckpt['model'], strict=False)
 lr = lr / 100
+epoch = 30
 
 optimizer = create_optimizer_v2(model, lr=lr, weight_decay=5e-2)
-scheduler = CosineLRScheduler(optimizer, t_initial = epoch * step_per_epoch, lr_min = lr/10000,
-                                warmup_t=warmup*step_per_epoch, warmup_lr_init = lr/20)
+scheduler = CosineLRScheduler(optimizer, t_initial = epoch * step_per_epoch, lr_min = lr/10000)
 scaler = GradScaler()
 # if wish to continue from a checkpoint
 resume = False
@@ -109,13 +111,14 @@ for i in range(start_epoch, epoch):
             # memory版
             p, closs, coarse_seg_loss = model(xyz, feature, indices, pts, y, i/epoch)
             loss = F.cross_entropy(p, y, label_smoothing=ls)
+            lovasz_loss = lovasz_softmax(p.softmax(dim=-1), y)
         metric.update(p.detach(), y)
         ttls.update(loss.item())
         corls.update(closs.item())
         optimizer.zero_grad(set_to_none=True)
         # scaler.scale(loss + closs*lam).backward()
         # memory版
-        scaler.scale(loss + closs*lam + coarse_seg_loss * 0.2).backward()
+        scaler.scale(loss + closs*lam + coarse_seg_loss * 0.1 + lovasz_loss * 3).backward()
         scaler.step(optimizer)
         scaler.update()
         

@@ -17,6 +17,7 @@ from time import time
 from config import s3dis_args, s3dis_warmup_args, dela_args, batch_size, learning_rate as lr, epoch, warmup, label_smoothing as ls
 from tqdm import tqdm
 from argparse import ArgumentParser
+from utils.lovasz_loss import lovasz_softmax
 
 
 # torch.set_float32_matmul_precision("high")
@@ -32,9 +33,11 @@ def warmup_fn(model, dataset):
         y = y.cuda(non_blocking=True)
         with autocast():
             # p, closs = model(xyz, feature, indices, pts)
+            # loss = F.cross_entropy(p, y) + closs
             # memory版
             p, closs, coarse_seg_loss = model(xyz, feature, indices, pts, y, 0)
-            loss = F.cross_entropy(p, y) + closs + coarse_seg_loss * 0.2
+            lovasz_loss = lovasz_softmax(p.softmax(dim=-1), y)
+            loss = F.cross_entropy(p, y) + closs + coarse_seg_loss * 0.1 + lovasz_loss * 0
         loss.backward()
 
 parser = ArgumentParser()
@@ -49,8 +52,8 @@ logger = util.create_logger(logfile)
 
 logger.info(r"base ")
 
-train_dataset = S3DIS(s3dis_args, partition="!5", loop=30)
-test_dataset = S3DIS(s3dis_args, partition="5", loop=1, train=False)
+train_dataset = S3DIS(s3dis_args, partition="!6", loop=30)
+test_dataset = S3DIS(s3dis_args, partition="6", loop=1, train=False)
 temp = train_dataset[0]   # debug
 
 traindlr = DataLoader(train_dataset, batch_size=batch_size, 
@@ -83,7 +86,7 @@ metric = util.Metric(13)
 ttls = util.AverageMeter() 
 corls = util.AverageMeter() 
 best = 0
-warmup_fn(model, S3DIS(s3dis_warmup_args, partition="!5", loop=batch_size, warmup=True))
+warmup_fn(model, S3DIS(s3dis_warmup_args, partition="!6", loop=batch_size, warmup=True))
 for i in range(start_epoch, epoch):
     model.train()
     ttls.reset()
@@ -105,13 +108,14 @@ for i in range(start_epoch, epoch):
             # memory版
             p, closs, coarse_seg_loss = model(xyz, feature, indices, pts, y, i/epoch)
             loss = F.cross_entropy(p, y, label_smoothing=ls)
+            lovasz_loss = lovasz_softmax(p.softmax(dim=-1), y)
         metric.update(p.detach(), y)
         ttls.update(loss.item())
         corls.update(closs.item())
         optimizer.zero_grad(set_to_none=True)
         # scaler.scale(loss + closs*lam).backward()
         # memory版
-        scaler.scale(loss + closs*lam + coarse_seg_loss * 0.2).backward()
+        scaler.scale(loss + closs*lam + coarse_seg_loss * 0.1 + lovasz_loss * 0).backward()
         scaler.step(optimizer)
         scaler.update()
         
