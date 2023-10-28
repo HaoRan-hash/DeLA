@@ -9,7 +9,6 @@ sys.path.append(str(Path(__file__).absolute().parent.parent))
 import utils.util as util
 from delasemseg import DelaSemSeg
 from delasemseg_mem import DelaSemSeg_Mem
-from delasemseg_mem_2 import DelaSemSeg_Mem_2
 from config import s3dis_args, dela_args
 from torch.cuda.amp import autocast
 from tqdm import tqdm
@@ -32,12 +31,12 @@ loop = 12
 testdlr = DataLoader(S3DIS(s3dis_args, partition="5", loop=loop, train=False, test=True), batch_size=1,
                       collate_fn=s3dis_test_collate_fn, pin_memory=True, num_workers=8)
 
-model = DelaSemSeg(dela_args).cuda()
+# model = DelaSemSeg(dela_args).cuda()
 # memory版
-# model = DelaSemSeg_Mem_2(dela_args).cuda()
+model = DelaSemSeg_Mem(dela_args).cuda()
 
-# util.load_state(f"output/model/{cur_id}/best.pt", model=model)
-util.load_state(f"pretrained/best.pt", model=model)
+util.load_state(f"output/model/{cur_id}/best.pt", model=model)
+# util.load_state(f"pretrained/best.pt", model=model)
 
 model.eval()
 
