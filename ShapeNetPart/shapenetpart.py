@@ -77,6 +77,13 @@ class PartNormalDataset(Dataset):
 
         # for cat in sorted(self.seg_classes.keys()):
         #     print(cat, self.seg_classes[cat])
+        
+        self.object_to_part_onehot = torch.zeros((16, 50), dtype=torch.uint8)
+        for i, key in enumerate(self.classes):
+            for j in self.seg_classes[key]:
+                self.object_to_part_onehot[i, j] = 1
+        self.object_to_part_onehot = self.object_to_part_onehot.cuda()
+        # print(self.object_to_part_onehot)
 
         self.cache = {}  # from index to (point_set, cls, seg) tuple
         self.cache_size = 20000
@@ -112,7 +119,7 @@ class PartNormalDataset(Dataset):
             if random.random() < 0.2:
                 norm.fill_(0.)
             else:
-                norm *= scale[[1, 2, 0]] * scale[[2, 0, 1]]
+                norm *= scale[[1, 2, 0]] * scale[[2, 0, 1]]   # 这里对norm的缩放没理解
                 norm = F.normalize(norm, p=2, dim=-1, eps=1e-8)
             
             jitter = torch.empty_like(xyz).normal_(std=0.001)
