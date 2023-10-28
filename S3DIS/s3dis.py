@@ -76,6 +76,9 @@ class S3DIS(Dataset):
             indices = grid_subsampling(xyz, self.grid_size[0], 2.5 / 14)
         else:
             indices = grid_subsampling_test(xyz, self.grid_size[0], 2.5 / 14, pick=0)
+            # random pick
+            # pick = random.randint(0, 100)
+            # indices = grid_subsampling_test(xyz, self.grid_size[0], 2.5 / 14, pick=pick)
 
         xyz = xyz[indices]
 
