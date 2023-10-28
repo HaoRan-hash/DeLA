@@ -181,7 +181,7 @@ class Stage(nn.Module):
         
 
         # main block
-        x = self.blk(x, knn)
+        x = self.blk(x, knn)   # x.shape = (b, n, c)
 
         # next stage
         if not self.last:
@@ -270,7 +270,7 @@ class DelaPartSeg(nn.Module):
             idx = idx.unsqueeze(-1).expand(-1, -1, 3)
             xyz = torch.gather(xyz, 1, idx)
             normal = torch.gather(normal, 1, idx)
-        pwd = calc_pwd(xyz)
+        pwd = calc_pwd(xyz)   # pwd是用于下采样的
         x, closs = self.stage(normal, xyz, None, pwd)
         shape = F.one_hot(shape, self.shape_classes).float()
         shape = self.shapeproj(shape).view(B, 1, -1).repeat(1, N, 1).view(B*N, -1)
