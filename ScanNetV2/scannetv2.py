@@ -234,6 +234,98 @@ class ScanNetV2(Dataset):
             indices.append(kdt.knn(full_xyz, 1, False)[0].squeeze(-1))
 
         return
+    
+
+class ScanNetV2_Test(Dataset):
+    def __init__(self, args, data_path, loop=6):
+
+        self.paths = list(Path(data_path).iterdir())
+
+        self.loop = loop
+
+        self.k = list(args.k)
+        self.grid_size = list(args.grid_size)
+        self.max_pts = 2**3**4
+        if hasattr(args, "max_pts") and args.max_pts > 0:
+            self.max_pts = args.max_pts
+        
+        self.datas = [torch.load(path) for path in self.paths]
+        self.els = ElasticDistortion()
+
+    def __len__(self):
+        return len(self.paths) * self.loop
+    
+    def __getitem__(self, idx):
+        return self.get_test_item(idx)
+    
+    def get_test_item(self, idx):
+        rotations = [0, 0.5, 1, 1.5]
+        scales = [0.95, 1, 1.05]
+        augs = len(rotations) * len(scales)
+        aug = idx % self.loop
+        pick = aug // augs
+        aug %= augs
+
+        idx //= self.loop
+        xyz, col, norm = self.datas[idx]
+        name = self.paths[idx]
+
+        angle = math.pi * rotations[aug // len(scales)]
+        cos, sin = math.cos(angle), math.sin(angle)
+        rotmat = torch.tensor([[cos, sin, 0], [-sin, cos, 0], [0, 0, 1]])
+        norm = norm @ rotmat
+        rotmat *= scales[aug % len(scales)]
+        xyz = xyz @ rotmat
+        xyz -= xyz.min(dim=0)[0]
+        
+        full_xyz = xyz
+
+        indices = grid_subsampling_test(xyz, self.grid_size[0], 2.5 / 1.5, pick=pick)
+        xyz = xyz[indices]
+        col = col[indices].float()
+        norm = norm[indices]
+
+        full_nn = KDTree(xyz).knn(full_xyz, 1)[0].squeeze(-1)
+    
+        col.mul_(1 / 250.)
+
+        xyz -= xyz.min(dim=0)[0]
+        feature = torch.cat([col, xyz[:, 2:], norm], dim=1)
+
+        indices = []
+        self.knn(xyz, self.grid_size[::-1], self.k[::-1], indices)    
+
+        xyz.mul_(60)
+        
+        return xyz, feature, indices, full_nn, name
+    
+    def knn(self, xyz: torch.Tensor, grid_size: list, k: list, indices: list, full_xyz: torch.Tensor=None):
+        """
+        presubsampling and knn search \\
+        return indices: knn1, sub1, knn2, sub2, knn3, back_knn1, back_knn2
+        """
+        first = full_xyz is None
+        last = len(k) == 1
+
+        gs = grid_size.pop()
+        if first:
+            full_xyz = xyz
+        else:
+            sub_indices = grid_subsampling(xyz, gs)
+            xyz = xyz[sub_indices]
+            indices.append(sub_indices)
+
+        kdt = KDTree(xyz)
+        indices.append(kdt.knn(xyz, k.pop(), False)[0])
+
+        if not last:
+            self.knn(xyz, grid_size, k, indices, full_xyz)
+
+        if not first:
+            indices.append(kdt.knn(full_xyz, 1, False)[0].squeeze(-1))
+
+        return
+    
 
 def fix_indices(indices, cnt1: list, cnt2: list):
     """
