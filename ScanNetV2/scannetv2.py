@@ -71,6 +71,8 @@ class ScanNetV2(Dataset):
     def __init__(self, args, partition="train", loop=6, train=True, test=False, warmup=False):
 
         self.paths = scan_train if partition == "train" else scan_val
+        if partition == 'trainval':
+            self.paths = scan_train + scan_val
         self.paths = [processed_data_path / f"{p}.pt" for p in self.paths]
 
         self.loop = loop
@@ -174,6 +176,7 @@ class ScanNetV2(Dataset):
 
         idx //= self.loop
         xyz, col, norm, lbl = self.datas[idx]
+        name = self.paths[idx]
 
         angle = math.pi * rotations[aug // len(scales)]
         cos, sin = math.cos(angle), math.sin(angle)
@@ -203,7 +206,7 @@ class ScanNetV2(Dataset):
 
         xyz.mul_(60)
         
-        return xyz, feature, indices, full_nn, full_lbl
+        return xyz, feature, indices, full_nn, full_lbl, name, full_xyz
     
     def knn(self, xyz: torch.Tensor, grid_size: list, k: list, indices: list, full_xyz: torch.Tensor=None):
         """
