@@ -123,6 +123,7 @@ class S3DIS(Dataset):
 
         idx //= self.loop
         xyz, col, lbl = self.datas[idx]
+        name = self.paths[idx]
         
         full_xyz = xyz
         full_lbl = lbl
@@ -143,7 +144,7 @@ class S3DIS(Dataset):
 
         xyz.mul_(40)
         
-        return xyz, feature, indices, full_nn, full_lbl
+        return xyz, feature, indices, full_nn, full_lbl, name, full_xyz
     
     def knn(self, xyz: torch.Tensor, grid_size: list, k: list, indices: list, full_xyz: torch.Tensor=None):
         """
