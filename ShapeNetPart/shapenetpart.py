@@ -14,6 +14,11 @@ class PartTest(Dataset):
     def __init__(self) -> None:
         super().__init__()
         self.xyz, self.norm, self.shape, self.seg = torch.load(presample_path)
+        self.idx_to_class = {}
+        with open('/mnt/Disk16T/chenhr/threed_data/data/shapenetcore_partanno_segmentation_benchmark_v0_normal/synsetoffset2category.txt', 'r') as f:
+            for i, line in enumerate(f):
+                line = line.strip().split()
+                self.idx_to_class[i] = line[0]
     
     def __len__(self):
         return self.xyz.shape[0]
