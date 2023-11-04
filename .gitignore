@@ -1,5 +1,14 @@
-utils/*
+utils/cutils/*
+utils/pointnet2_ops_lib/*
+utils/timm/*
 **/*.pyc
 .vscode/*
 output/*
 S3DIS/output/*
+S3DIS/pretrained/*
+ScanNetV2/output/*
+ScanNetV2/pretrained/*
+ShapeNetPart/output/*
+temp.py
+ScanNetV2/save_zips/*
+*.txt

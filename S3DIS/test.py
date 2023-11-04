@@ -45,7 +45,7 @@ cum = 0
 cnt = 0
 
 with torch.no_grad():
-    for xyz, feature, indices, nn, y in tqdm(testdlr):
+    for xyz, feature, indices, nn, y, _, _ in tqdm(testdlr):
             xyz = xyz.cuda(non_blocking=True)
             feature = feature.cuda(non_blocking=True)
             indices = [ii.cuda(non_blocking=True).long() for ii in indices[::-1]]
